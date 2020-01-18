@@ -7,8 +7,13 @@
             }
         </style>
         <script>
+            const newTitle = 'Another Title';
+
+            function setTitle(title) {
+                document.title=title;
+            }
             setTimeout(function () {
-                document.title='Another title';
+                setTitle(newTitle);
             }, 1000 +2)
         </script>
     </head>
