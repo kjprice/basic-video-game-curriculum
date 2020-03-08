@@ -197,7 +197,6 @@ let characterHeight = 0;
 let characterWidth = 0;
 
 let characterMoveDirection = null;
-// TODO: Set the move direction to "new move direction" as soon as a new path comes available
 let characterMoveNewDirection = null;
 
 
@@ -215,15 +214,37 @@ function keyPressed(e){
     pauseGame();
   }
 
-  if (key === 'ArrowUp') {
-    characterMoveNewDirection = 'up';
-  } else if (key === 'ArrowDown') {
-    characterMoveNewDirection = 'down';
-  } else if (key === 'ArrowLeft') {
-    characterMoveNewDirection = 'left';
-  } else if (key === 'ArrowRight') {
-    characterMoveNewDirection = 'right';
+  switch(key) {
+    case 'ArrowUp':
+      if (characterMoveDirection === 'down') {
+        characterMoveDirection = 'up';
+      } else {
+        characterMoveNewDirection = 'up';
+      }
+      break;
+    case 'ArrowDown':
+      if (characterMoveDirection === 'up') {
+        characterMoveDirection = 'down';
+      } else {
+        characterMoveNewDirection = 'down';
+      }
+      break;
+    case 'ArrowLeft':
+      if (characterMoveDirection === 'right') {
+        characterMoveDirection = 'left';
+      } else {
+        characterMoveNewDirection = 'left';
+      }
+      break;
+    case 'ArrowRight':
+      if (characterMoveDirection === 'left') {
+        characterMoveDirection = 'right';
+      } else {
+        characterMoveNewDirection = 'right';
+      }
+      break;
   }
+
   if (characterMoveDirection === null) {
     characterMoveDirection = characterMoveNewDirection;
   }
