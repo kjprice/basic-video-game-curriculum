@@ -1,8 +1,19 @@
 /*
 * TODO:
-* 
+* - TODO: Set padding (paddingVertical / paddingHorizontal) on the path: set in the constructor - half of user's width
+* - Path: Create a function called "getWidth" which returns this.paddingHorizontal + (this.width or x2-x1)
+* - Path: Create a function called "getHeight" which returns this.paddingVertical + (this.height or y2-y1)
+* - Path: Draw path by passing in x1, y1, this.getWidth(), this.getHeight()
+* - Create a variable called newDirection - which turns into characterMoveDirection as soon as a path becomes accessible
+* - Add collission detection for the end of the path - stops character
+* --- need to account for the width of the character and padding?
+TODO (BAD GUY)
+* - Have bad guy walk around paths aimlessly
+* - See about following the character if bad guy sees user
 */
 
+
+/* TODO: We can't use this here */
 function followPoint(startingX, startingY, endingX, endingY, velosity) {
   const deltaY = endingY - startingY;
   const deltaX = endingX - startingX;
@@ -32,13 +43,30 @@ class Path {
   isHorizontal = false;
   width = null;
   height = null;
+  paddingVertical = null;
+  paddingHorizontal = null;
+
+  x1 = null;
+  y1 = null;
+  x2 = null;
+  y2 = null;
 
   constructor (width, height, coords) {
-    this.width = width;
-    this.height = height;
     this.coords = coords;
 
+    this.paddingVertical = height / 6;
+    this.paddingHorizontal = width / 6;
+
+    this.setOrientation(coords);
+    this.setWidth(width);
+    this.setHeight(height);
+
+    this.setCoordintes(coords);
+  }
+
+  setOrientation(coords) {
     const [ x1, y1, x2, y2 ] = coords;
+
     if (x1 === x2) {
       this.isVertical = true;
     } else if (y1 === y2) {
@@ -48,16 +76,42 @@ class Path {
     }
   }
 
+  setCoordintes(coords) {
+    const [ x1, y1, x2, y2 ] = coords;
+
+    this.x1 = x1 - this.paddingHorizontal;
+    this.y1 = y1 - this.paddingVertical;
+    this.x2 = x2 + this.paddingHorizontal;
+    this.y2 = y2 + this.paddingVertical;
+ }
+
+  setWidth(width) {
+    const [ x1, y1, x2, y2 ] = this.coords;
+    const padding = this.paddingHorizontal * 2;
+
+    if (this.isHorizontal) {
+      this.width = padding + x2 - x1;
+    } else {
+      this.width = padding + width;
+    }
+  }
+
+  setHeight(height) {
+    const [ x1, y1, x2, y2 ] = this.coords;
+    const padding = this.paddingVertical * 2;
+    if (this.isVertical) {
+      this.height = padding + y2 - y1;
+    } else {
+      this.height =  padding + height;
+    }
+  }
+
   draw() {
     // TODO: Add padding to make path wider than the character
-    const [ x1, y1, x2, y2 ] = this.coords;
+    // const [ x1, y1, x2, y2 ] = this.coords;
     fill('white');
     noStroke();
-    if (this.isHorizontal) {
-      rect(x1, y1, x2-x1, this.height);
-    } else {
-      rect(x1, y1, this.width, y2-y1);
-    }
+    rect(this.x1, this.y1, this.width, this.height)
   }
 
   addConnection(path) {
@@ -131,7 +185,7 @@ class BadGuy extends Character {
     this.y = newY;
   }
   move(){
-    this.followGoodGuy();
+    // this.followGoodGuy();
   }
 }
 
@@ -180,14 +234,16 @@ function keyPressed(e){
 function setup() {
   createCanvas(500, 500);
 
-  characterWidth = width / 10;
-  characterHeight = height / 10;
+  characterWidth = width / 20;
+  characterHeight = height / 20;
 
   paths[0] = new Path(characterWidth, characterHeight, [20, 20, 400, 20]);
   paths[1] = new Path(characterWidth, characterHeight, [20, 20, 20, 400]);
+  paths[2] = new Path(characterWidth, characterHeight, [400, 20, 400, 400]);
 
   paths[0].addConnection(paths[1]);
   paths[1].addConnection(paths[0]);
+  paths[0].addConnection(paths[2]);
 
   goodGuy = new Character(200, 20, characterWidth, characterHeight, paths[0]);
 
