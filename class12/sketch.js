@@ -1,3 +1,8 @@
+/*
+* TODO:
+* 
+*/
+
 function followPoint(startingX, startingY, endingX, endingY, velosity) {
   const deltaY = endingY - startingY;
   const deltaX = endingX - startingX;
@@ -44,6 +49,7 @@ class Path {
   }
 
   draw() {
+    // TODO: Add padding to make path wider than the character
     const [ x1, y1, x2, y2 ] = this.coords;
     fill('white');
     noStroke();
@@ -137,6 +143,39 @@ let characterHeight = 0;
 let characterWidth = 0;
 
 let characterMoveDirection = null;
+// TODO: Set the move direction to "new move direction" as soon as a new path comes available
+let characterMoveNewDirection = null;
+
+
+function pauseGame(){
+  if(isPaused){
+    isPaused = false;
+    loop();
+  } else {
+    isPaused = true;
+    noLoop();
+  }
+}
+function keyPressed(e){
+  if(e.key == "Escape"){
+    pauseGame();
+  }
+
+  if (key === 'ArrowUp') {
+    characterMoveNewDirection = 'up';
+  } else if (key === 'ArrowDown') {
+    characterMoveNewDirection = 'down';
+  } else if (key === 'ArrowLeft') {
+    characterMoveNewDirection = 'left';
+  } else if (key === 'ArrowRight') {
+    characterMoveNewDirection = 'right';
+  }
+  if (characterMoveDirection === null) {
+    characterMoveDirection = characterMoveNewDirection;
+  }
+
+  return false;
+}
 
 function setup() {
   createCanvas(500, 500);
@@ -177,31 +216,4 @@ function draw() {
     badGuy.move();
     badGuy.draw();
   });
-}
-
-function pauseGame(){
-  if(isPaused){
-    isPaused = false;
-    loop();
-  } else {
-    isPaused = true;
-    noLoop();
-  }
-}
-function keyPressed(e){
-  if(e.key == "Escape"){
-    pauseGame();
-  }
-
-  if (key === 'ArrowUp') {
-    characterMoveDirection = 'up';
-  } else if (key === 'ArrowDown') {
-    characterMoveDirection = 'down';
-  } else if (key === 'ArrowLeft') {
-    characterMoveDirection = 'left';
-  } else if (key === 'ArrowRight') {
-    characterMoveDirection = 'right';
-  }
-
-  return false;
 }
