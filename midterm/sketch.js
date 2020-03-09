@@ -113,7 +113,7 @@ class Path {
     const padding = this.paddingHorizontal * 2;
 
     if (this.isHorizontal) {
-      this.width = padding + x2 - x1;
+      this.width = (padding * 4) + x2 - x1;
     } else {
       this.width = padding + width;
     }
@@ -123,7 +123,7 @@ class Path {
     const [ x1, y1, x2, y2 ] = this.coords;
     const padding = this.paddingVertical * 2;
     if (this.isVertical) {
-      this.height = padding + y2 - y1;
+      this.height = (padding * 4) + y2 - y1;
     } else {
       this.height =  padding + height;
     }
@@ -139,6 +139,52 @@ class Path {
 
   addConnection(path) {
     this.connections.push(path);
+  }
+
+  pathIntersectWithPath(path) {
+    if (this.isVertical && path.isVertical) {
+      return false;
+    }
+
+    if (this.isHorizontal && path.isHorizontal) {
+      return false;
+    }
+
+    const [x11, y11, x12, y12] = this.coords;
+    const [x21, y21, x22, y22] = path.coords;
+
+    if (this.isVertical) {
+     if (x21 > x11) {
+       return false;
+     } 
+     if (x22 < x12) {
+       return false;
+     }
+
+     if (y21 < y11) {
+       return false;
+     }
+
+     if (y22 > y12) {
+       return false;
+     }
+    } else { // it is horizontal
+      if (x11 > x21) {
+        return false;
+      }
+      if (x12 < x22) {
+        return false;
+      }
+
+      if (y11 < y21) {
+        return false;
+      }
+      if (y12 > y22) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
 
@@ -289,7 +335,7 @@ class BadGuy extends Character {
 
 let goodGuy;
 let badGuys = [];
-const paths = [];
+let paths;
 
 let characterHeight = 0;
 let characterWidth = 0;
@@ -351,19 +397,30 @@ function keyPressed(e){
   return false;
 }
 
+const pathCoords = [
+  [20, 20, 400, 20],
+  [20, 20, 20, 400],
+  [400, 20, 400, 400]
+];
+
+function createPathsAndRelationships() {
+  paths = pathCoords.map((patchCoord) => new Path(characterWidth, characterHeight, patchCoord));
+
+  paths.forEach(path => {
+    const pathInteresections = paths.filter((otherPath) => otherPath !== path && path.pathIntersectWithPath(otherPath));
+
+    pathInteresections.forEach(otherPath => path.addConnection(otherPath));
+    
+  });
+}
+
 function setup() {
   createCanvas(500, 500);
 
   characterWidth = width / 20;
   characterHeight = height / 20;
 
-  paths[0] = new Path(characterWidth, characterHeight, [20, 20, 400, 20]);
-  paths[1] = new Path(characterWidth, characterHeight, [20, 20, 20, 400]);
-  paths[2] = new Path(characterWidth, characterHeight, [400, 20, 400, 400]);
-
-
-  addPathConnection(paths[0], paths[1]);
-  addPathConnection(paths[0], paths[2]);
+  createPathsAndRelationships();
 
   goodGuy = new Character(200, 20, characterWidth, characterHeight, paths[0]);
 
