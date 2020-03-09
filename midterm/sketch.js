@@ -337,8 +337,8 @@ let goodGuy;
 let badGuys = [];
 let paths;
 
-let characterHeight = 0;
-let characterWidth = 0;
+const characterHeight = 15;
+const characterWidth = 15;
 
 let characterMoveDirection = null;
 let characterMoveNewDirection = null;
@@ -398,9 +398,46 @@ function keyPressed(e){
 }
 
 const pathCoords = [
-  [20, 20, 400, 20],
-  [20, 20, 20, 400],
-  [400, 20, 400, 400]
+  // Top
+  [20, 20, 760, 20], //Horizontal
+   // Top Left
+  [20, 20, 20, 80], // Vertical
+  [20, 80, 60, 80], // Horizontal
+  // Left 1
+  [60, 20, 60, 260], // Vertical
+  // Left 2
+  [100, 20, 100, 260], // Vertical
+
+  // Left 3
+  [100, 80, 240, 80], // Horizontal
+  [240, 80, 240, 260], // Vertical
+
+  // Left 4
+  [100, 140, 180, 140], // Horizontal
+  [180, 140, 180, 260], // Vertical
+
+  // Middle - This is where the chamber will go
+  [280, 80, 280, 260], // Vertical
+  [280, 80, 500, 80], // Horizontal
+  [500, 80, 500, 260], // Vertical
+  [280, 200, 500, 200], // Horizontal
+
+  // Middle Top
+  [380, 20, 380, 80], // Vertical
+
+  // Right 1
+  [560, 20, 560, 260], // Vertical
+  [560, 140, 760, 140], // Horizontal
+
+  // Right 2
+  [660, 20, 660, 260], // Vertical
+
+  
+  // Right
+  [760, 20, 760, 260], // Vertical
+
+  // Bottom
+  [20, 260, 760, 260], //Horizontal
 ];
 
 function createPathsAndRelationships() {
@@ -415,10 +452,7 @@ function createPathsAndRelationships() {
 }
 
 function setup() {
-  createCanvas(500, 500);
-
-  characterWidth = width / 20;
-  characterHeight = height / 20;
+  createCanvas(800, 300);
 
   createPathsAndRelationships();
 
