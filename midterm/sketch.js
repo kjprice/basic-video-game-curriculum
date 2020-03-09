@@ -36,6 +36,43 @@ function followPoint(startingX, startingY, endingX, endingY, velosity) {
 let isPaused = false;
 let isOver = false;
 
+class Food {
+  isEaten = false;
+  x = null;
+  y = null;
+
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+
+  draw() {
+    if (this.isEaten) {
+      return;
+    }
+
+    stroke(253,190,190);
+    strokeWeight(3);
+
+    point(this.x, this.y);
+  }
+}
+
+SPACE_BETWEEN_FOOD = 10;
+
+const allFood = [];
+let foodPlaced = 0;
+function getAlreadyExistingFood(x, y) {
+  const food = allFood.filter(foodPoint => foodPoint.x === x && foodPoint.y == y)[0];
+  return food;
+}
+
+function setNewFood(food) {
+  allFood.push(food);
+  foodPlaced += 1;
+}
+
+let totalFoodConsumed = 0;
 class Path {
   coords = null;
   connections = [];
@@ -50,6 +87,7 @@ class Path {
   y1 = null;
   x2 = null;
   y2 = null;
+  food = [];
 
   constructor (width, height, coords) {
     this.coords = coords;
@@ -62,6 +100,73 @@ class Path {
     this.setHeight(height);
 
     this.setCoordintes(coords);
+    this.setFood();
+  }
+
+  getNewConsumedFood(characterX, characterY) {
+    const edibleFood = this.food.filter(foodPoint => !foodPoint.isEaten);
+    if (this.isHorizontal) {
+      for (let i = 0; i < edibleFood.length; i += 1) {
+        const foodPoint = edibleFood[i];
+        const { x } = foodPoint;
+        if (characterX - (characterWidth /2) < x && x < characterX + (characterWidth /2) ) {
+          return foodPoint;
+        }
+      }
+    } else {
+      for (let i = 0; i < edibleFood.length; i += 1) {
+        const foodPoint = edibleFood[i];
+        const { y } = foodPoint;
+        if (characterY - (characterHeight /2) < y && y < characterY + (characterHeight /2) ) {
+          return foodPoint;
+        }
+      }
+    }
+  }
+
+  tryToConsumeFood(characterX, characterY) {
+    const foodConsumedRightNow = this.getNewConsumedFood(characterX, characterY);
+    if (!foodConsumedRightNow) {
+      return;
+    }
+
+    foodConsumedRightNow.isEaten = true;
+    totalFoodConsumed += 1;
+  }
+
+  setFood() {
+    const startX = this.x1;
+    const startY = this.y1;
+    const endX = this.x2;
+    const endY = this.y2;
+
+    // const [ startX, startY, endX, endY ] = this.coords;
+    let foodCountTotal;
+    if (this.isHorizontal) {
+      foodCountTotal = (endX - startX) / SPACE_BETWEEN_FOOD;
+    } else {
+      foodCountTotal = (endY - startY) / SPACE_BETWEEN_FOOD;
+    }
+    for (let i = 0; i < foodCountTotal; i += 1) {
+      let x = startX;
+      let y = startY;
+      if (this.isHorizontal) {
+        x = startX + (i * SPACE_BETWEEN_FOOD);
+        x += characterWidth / 2 + this.paddingHorizontal;
+        y += this.height / 2;
+      } else {
+        y = startY + (i * SPACE_BETWEEN_FOOD);
+        y += characterHeight / 2 + this.paddingVertical;
+        x += this.width / 2;
+      }
+      
+      let food = getAlreadyExistingFood(x, y);
+      if (!food) {
+        food = new Food(x, y);
+        setNewFood(food);
+      }
+      this.food.push(food);
+    }
   }
 
   setOrientation(coords) {
@@ -129,12 +234,18 @@ class Path {
     }
   }
 
+  drawFood() {
+    this.food.forEach(foodPoint => {
+      foodPoint.draw();
+    })
+  }
+
   draw() {
     // TODO: Add padding to make path wider than the character
     // const [ x1, y1, x2, y2 ] = this.coords;
-    fill('white');
+    fill('black');
     noStroke();
-    rect(this.x1, this.y1, this.width, this.height)
+    rect(this.x1, this.y1, this.width, this.height);
   }
 
   addConnection(path) {
@@ -347,6 +458,8 @@ class PacManCharacter extends Character {
       return;
     }
 
+    this.currentPath.tryToConsumeFood(newX + (this.width / 2), newY+ (this.height / 2));
+
     this.x = newX;
     this.y = newY;
   }
@@ -510,7 +623,7 @@ class Chamber {
   }
 
   draw() {
-    fill('white');
+    fill('black');
     noStroke();
     rect(this.x, this.y, this.width, this.height);
     this.drawDoor();
@@ -580,14 +693,17 @@ function setup() {
   badGuys.forEach((badGuy, i) => {
     badGuy.setGoodGuy(pacMan);
   });
-
 }
 
 function draw() {
-  background(150);
+  background(180, 180, 255);
 
   paths.forEach((path, i) => {
     path.draw();
+  });
+
+  paths.forEach((path, i) => {
+    path.drawFood();
   });
 
   chamber.draw();
