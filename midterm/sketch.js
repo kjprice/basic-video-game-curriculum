@@ -211,8 +211,7 @@ class Character {
   }
 
   draw(){
-    fill(this.fill)
-    ellipse(this.x + (this.width / 2), this.y + (this.height / 2), this.width, this.height)
+    throw new Error('Cannot call Character.draw method directly - this should be overwitten');
   }
 
   getConnectedPathTouchingPoint(x, y) {
@@ -275,6 +274,43 @@ class Character {
     characterMoveNewDirection = null;
   }
 
+  move() {
+    throw new Error('Cannot call Character.move method directly');
+  }
+}
+
+class PacManCharacter extends Character {
+  m = 0
+  moutMoveSpeed = .15;
+  draw(){
+    noStroke();
+    fill(255,200,10);
+    
+    // With help from https://editor.p5js.org/lkkchung/sketches/B1-0PmCqb
+
+    let mouthDirectionAddition;
+    switch (characterMoveDirection) {
+      // TODO: Add collission detection for the end of the path
+      case 'up':
+        mouthDirectionAddition = -HALF_PI;
+        break;
+      case 'down':
+        mouthDirectionAddition = HALF_PI;
+        break;
+      case 'left':
+        mouthDirectionAddition = PI;
+        break;
+      case 'right':
+      default:
+        mouthDirectionAddition = 0;
+    }
+    const arcBottom = PI*sin(this.m)/8+PI/8 + mouthDirectionAddition;
+    const arcTop = -PI*sin(this.m)/8-PI/8 + mouthDirectionAddition;
+    arc(this.x + (this.width / 2), this.y + (this.height / 2),this.width, this.height, arcBottom, arcTop);
+    //text((sin(m)*PI/8,20,180);
+    this.m = this.m + this.moutMoveSpeed;
+  }
+
   move(){
     if (characterMoveDirection === null) {
       return;
@@ -330,6 +366,10 @@ class BadGuy extends Character {
   }
   move(){
     // this.followGoodGuy();
+  }
+  draw(){
+    fill(this.fill)
+    ellipse(this.x + (this.width / 2), this.y + (this.height / 2), this.width, this.height)
   }
 }
 
@@ -512,7 +552,7 @@ class Chamber {
   }
 }
 
-let goodGuy;
+let pacMan;
 let badGuys = [];
 let paths;
 
@@ -530,7 +570,7 @@ function setup() {
 
   chamber = new Chamber();
 
-  goodGuy = new Character(200, 20, characterWidth, characterHeight, paths[0]);
+  pacMan = new PacManCharacter(200, 20, characterWidth, characterHeight, paths[0]);
 
   badGuys[0] = new BadGuy(20, 200, characterWidth, characterHeight, paths[1]);
   // badGuys[1] = new BadGuy(width, 0, width/10, height/10, paths[1]);
@@ -538,7 +578,7 @@ function setup() {
   // badGuys[3] = new BadGuy(0, height, width/10, height/10, paths[1]);
 
   badGuys.forEach((badGuy, i) => {
-    badGuy.setGoodGuy(goodGuy);
+    badGuy.setGoodGuy(pacMan);
   });
 
 }
@@ -552,8 +592,8 @@ function draw() {
 
   chamber.draw();
 
-  goodGuy.draw();
-  goodGuy.move();
+  pacMan.draw();
+  pacMan.move();
 
   badGuys.forEach((badGuy, i) => {
     badGuy.move();
