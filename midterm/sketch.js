@@ -76,6 +76,29 @@ class Path {
     }
   }
 
+  isPointOnPath(x, y) {
+    const [x1, y1, x2, y2] = this.coords;
+    if (this.isVertical) {
+      if (x1 !== x) {
+        return false;
+      }
+
+      if (y < y1 || y > y2) {
+        return false;
+      }
+    } else {
+      if (y1 !== y) {
+        return false;
+      }
+
+      if (x < x1 || x > x2) {
+        return false;
+      }
+    }
+
+    return true;
+  } 
+
   setCoordintes(coords) {
     const [ x1, y1, x2, y2 ] = coords;
 
@@ -119,13 +142,18 @@ class Path {
   }
 }
 
+function addPathConnection(path1, path2) {
+  path1.addConnection(path2);
+  path2.addConnection(path1);
+}
+
 class Character {
   x = 0;
   y = 0;
   width = 0;
   height = 0;
   fill = color('red');
-  velocity = 3;
+  velocity = 4;
   currentPath = null;
 
   constructor(x, y, width, height, path){
@@ -141,34 +169,104 @@ class Character {
     ellipse(this.x + (this.width / 2), this.y + (this.height / 2), this.width, this.height)
   }
 
+  getConnectedPathTouchingPoint(x, y) {
+    return this.currentPath.connections.filter((path) => path.isPointOnPath(x, y))[0];
+  }
+
+  pathCollissionDetected(x, y) {
+    const [x1, y1, x2, y2] = this.currentPath.coords;
+    if (this.currentPath.isVertical) {
+      if (y > y2) {
+        return true;
+      }
+
+      if (y < y1) {
+        return true;
+      }
+    } else {
+      if (x > x2) {
+        return true;
+      }
+
+      if (x < x1) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  tryToSwitchPaths() {
+    let newX = this.x;
+    let newY = this.y;
+
+    switch (characterMoveNewDirection) {
+      case 'up':
+        newY -= this.velocity;
+        break;
+      case 'down':
+        newY += this.velocity;
+        break;
+      case 'left':
+        newX -= this.velocity;
+        break;
+      case 'right':
+        newX += this.velocity;
+        break;
+      default:
+        return false;
+    }
+
+
+    const connectedPath = this.getConnectedPathTouchingPoint(newX, newY);
+
+    if (!connectedPath) {
+      return;
+    }
+
+    this.currentPath = connectedPath;
+    characterMoveDirection = characterMoveNewDirection;
+    characterMoveNewDirection = null;
+  }
+
   move(){
     if (characterMoveDirection === null) {
       return;
     }
+    let newX = this.x;
+    let newY = this.y;
 
-    if (this.currentPath.isHorizontal && (characterMoveDirection == 'up' || characterMoveDirection == 'down')) {
-      // TODO: See if we can change to a different path
-    } else if (this.currentPath.isVertical && (characterMoveDirection == 'left' || characterMoveDirection == 'right')) {
-      // TODO: See if we can change to a different path
-    } else {
-      switch (characterMoveDirection) {
-        // TODO: Add collission detection for the end of the path
-        case 'up':
-          break;
-        case 'down':
-          break;
-        case 'left':
-          this.x -= this.velocity;
-          break;
-        case 'right':
-          this.x += this.velocity;
-          break;
-        default:
-          return;
-      }
+    
+    if (this.currentPath.isHorizontal && (characterMoveNewDirection == 'up' || characterMoveNewDirection == 'down')) {
+      this.tryToSwitchPaths();
+    } else if (this.currentPath.isVertical && (characterMoveNewDirection == 'left' || characterMoveNewDirection == 'right')) {
+      this.tryToSwitchPaths();
     }
-    // this.x = mouseX;
-    // this.y = mouseY;
+
+    switch (characterMoveDirection) {
+      // TODO: Add collission detection for the end of the path
+      case 'up':
+        newY = this.y - this.velocity;
+        break;
+      case 'down':
+        newY = this.y + this.velocity;
+        break;
+      case 'left':
+        newX = this.x - this.velocity;
+        break;
+      case 'right':
+        newX = this.x + this.velocity;
+        break;
+      default:
+        return;
+    }
+
+    if (this.pathCollissionDetected(newX, newY)) {
+      return;
+    }
+
+    this.x = newX;
+    this.y = newY;
   }
 }
 
@@ -209,6 +307,7 @@ function pauseGame(){
     noLoop();
   }
 }
+
 function keyPressed(e){
   if(e.key == "Escape"){
     pauseGame();
@@ -262,9 +361,9 @@ function setup() {
   paths[1] = new Path(characterWidth, characterHeight, [20, 20, 20, 400]);
   paths[2] = new Path(characterWidth, characterHeight, [400, 20, 400, 400]);
 
-  paths[0].addConnection(paths[1]);
-  paths[1].addConnection(paths[0]);
-  paths[0].addConnection(paths[2]);
+
+  addPathConnection(paths[0], paths[1]);
+  addPathConnection(paths[0], paths[2]);
 
   goodGuy = new Character(200, 20, characterWidth, characterHeight, paths[0]);
 
