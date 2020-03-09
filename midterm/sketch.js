@@ -333,16 +333,6 @@ class BadGuy extends Character {
   }
 }
 
-let goodGuy;
-let badGuys = [];
-let paths;
-
-const characterHeight = 15;
-const characterWidth = 15;
-
-let characterMoveDirection = null;
-let characterMoveNewDirection = null;
-
 
 function pauseGame(){
   if(isPaused){
@@ -451,10 +441,94 @@ function createPathsAndRelationships() {
   });
 }
 
+class Chamber {
+  x = 340;
+  y = 100;
+  width = 120;
+  height = 60;
+  touchingPath = null;
+  centerOfChamberX = null;
+
+  constructor() {
+    this.centerOfChamberX = this.x + (this.width / 2);
+
+    this.connectToNearestPath();
+  }
+
+  drawDoor() {
+    // const numberOfDots = 5; // Should be an odd number
+    // const spacesBetweenDots = 6;
+    // const xStart = this.centerOfChamberX - (spacesBetweenDots * (numberOfDots / 2 - 1))
+
+    const width = 40;
+    const xStart = this.centerOfChamberX - (width / 2);
+
+    // draw rectangle to visually create space between chamber and path
+    noStroke();
+    fill(253,190,190);
+    rect(xStart, this.y-2, width, 2);
+  }
+
+  draw() {
+    fill('white');
+    noStroke();
+    rect(this.x, this.y, this.width, this.height);
+    this.drawDoor();
+  }
+
+  getTouchingPath() {
+    // Only can connect to horizontal paths
+    const horizontalPaths = paths.filter(path => path.isHorizontal);
+    const pathsAboveChamber = horizontalPaths.filter(path => path.coords[1] < this.y);
+    const pathTouchingChamber = pathsAboveChamber.reduce((path, closestPath) => {
+      let closestY = 0;
+      if (closestPath) {
+        closestY = closestPath.coords[1];
+      }
+
+      if (path.coords[1] < closestY) {
+        return closestPath;
+      }
+
+      if (path.coords[0] < this.centerOfChamberX && path.coords[2] > this.centerOfChamberX) {
+        return path;
+      }
+
+      return closestPath;
+    });
+
+    return pathTouchingChamber;
+  }
+
+  connectToNearestPath() {
+    const path = this.getTouchingPath();
+    if (!path || !path.coords) {
+      throw new Error('Could not find a connecting path for chamber');
+    }
+
+    console.log(path);
+
+    this.touchingPath = path;
+  }
+}
+
+let goodGuy;
+let badGuys = [];
+let paths;
+
+const characterHeight = 15;
+const characterWidth = 15;
+
+let characterMoveDirection = null;
+let characterMoveNewDirection = null;
+let chamber;
+
 function setup() {
   createCanvas(800, 300);
 
   createPathsAndRelationships();
+
+  chamber = new Chamber();
 
   goodGuy = new Character(200, 20, characterWidth, characterHeight, paths[0]);
 
@@ -475,6 +549,8 @@ function draw() {
   paths.forEach((path, i) => {
     path.draw();
   });
+
+  chamber.draw();
 
   goodGuy.draw();
   goodGuy.move();
