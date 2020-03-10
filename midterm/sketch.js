@@ -352,11 +352,10 @@ class Character {
     return false;
   }
 
-  tryToSwitchPaths() {
+  tryToSwitchPaths(direction) {
     let newX = this.x;
     let newY = this.y;
-
-    switch (characterMoveNewDirection) {
+    switch (direction) {
       case 'up':
         newY -= this.velocity;
         break;
@@ -373,20 +372,123 @@ class Character {
         return false;
     }
 
-
     const connectedPath = this.getConnectedPathTouchingPoint(newX, newY);
 
     if (!connectedPath) {
-      return;
+      return false;
     }
 
     this.currentPath = connectedPath;
-    characterMoveDirection = characterMoveNewDirection;
-    characterMoveNewDirection = null;
+    return true;
   }
 
-  move() {
-    throw new Error('Cannot call Character.move method directly');
+  tryToSwitchToAnyPath() {
+    if (this.currentPath.isHorizontal && this.direction !== 'up') {
+      if (this.tryToSwitchPaths('up')) {
+        this.direction = 'up';
+        return true;
+      }
+    }
+    if (this.currentPath.isHorizontal && this.direction !== 'down') {
+      if (this.tryToSwitchPaths('down')) {
+        this.direction = 'down';
+        return true;
+      }
+    }
+    if (this.currentPath.isVertical && this.direction !== 'left') {
+      if (this.tryToSwitchPaths('left')) {
+        this.direction = 'left';
+        return true;
+      }
+    }
+    if (this.currentPath.isVertical && this.direction !== 'right') {
+      if (this.tryToSwitchPaths('right')) {
+        this.direction = 'right';
+        return true;
+      }
+    }
+
+    return false;
+  }
+  
+  reverseDirection() {
+    switch(this.direction) {
+      case 'left':
+        this.direction = 'right';
+        return;
+      case 'right':
+        this.direction = 'left';
+        return;
+      case 'up':
+        this.direction = 'down';
+        return;
+      case 'down':
+        this.direction = 'up';
+        return;
+    }
+  }
+
+  tryToMove(direction, switchPathsDirection = 'any') {
+    let newX = this.x;
+    let newY = this.y;
+
+    
+    if (this.currentPath.isHorizontal && (switchPathsDirection == 'up' || switchPathsDirection == 'down')) {
+      if (this.tryToSwitchPaths(switchPathsDirection)) {
+        characterMoveDirection = characterMoveNewDirection;
+        characterMoveNewDirection = null;
+        return;
+      }
+    } else if (this.currentPath.isVertical && (switchPathsDirection == 'left' || switchPathsDirection == 'right')) {
+      if (this.tryToSwitchPaths(switchPathsDirection)) {
+        characterMoveDirection = characterMoveNewDirection;
+        characterMoveNewDirection = null;
+        return;
+      }
+    }
+
+    switch (direction) {
+      case 'up':
+        newY = this.y - this.velocity;
+        break;
+      case 'down':
+        newY = this.y + this.velocity;
+        break;
+      case 'left':
+        newX = this.x - this.velocity;
+        break;
+      case 'right':
+        newX = this.x + this.velocity;
+        break;
+      default:
+        return false;
+    }
+
+    // 20% chance of bad guy changing direction - tends to go up or left
+    if (switchPathsDirection === 'any' && random() < .2) {
+      if (this.tryToSwitchToAnyPath()) {
+        return;
+      }
+    }
+
+    // .5% chance of bad guy reversing
+    if (switchPathsDirection === 'any' && random() < .005) {
+      this.reverseDirection();
+    }
+
+    if (this.pathCollissionDetected(newX, newY)) {
+      if (switchPathsDirection === 'any') {
+        if(!this.tryToSwitchToAnyPath()) {
+          this.reverseDirection();
+        }
+      }
+      return;
+    }
+
+    this.x = newX;
+    this.y = newY;
+
+    return true;
   }
 }
 
@@ -426,63 +528,133 @@ class PacManCharacter extends Character {
     if (characterMoveDirection === null) {
       return;
     }
-    let newX = this.x;
-    let newY = this.y;
 
-    
-    if (this.currentPath.isHorizontal && (characterMoveNewDirection == 'up' || characterMoveNewDirection == 'down')) {
-      this.tryToSwitchPaths();
-    } else if (this.currentPath.isVertical && (characterMoveNewDirection == 'left' || characterMoveNewDirection == 'right')) {
-      this.tryToSwitchPaths();
-    }
+    const didCharacterMove = this.tryToMove(characterMoveDirection, characterMoveNewDirection);
 
-    switch (characterMoveDirection) {
-      // TODO: Add collission detection for the end of the path
-      case 'up':
-        newY = this.y - this.velocity;
-        break;
-      case 'down':
-        newY = this.y + this.velocity;
-        break;
-      case 'left':
-        newX = this.x - this.velocity;
-        break;
-      case 'right':
-        newX = this.x + this.velocity;
-        break;
-      default:
-        return;
-    }
-
-    if (this.pathCollissionDetected(newX, newY)) {
+    if (!didCharacterMove) {
       return;
     }
-
-    this.currentPath.tryToConsumeFood(newX + (this.width / 2), newY+ (this.height / 2));
-
-    this.x = newX;
-    this.y = newY;
+    this.currentPath.tryToConsumeFood(this.x + (this.width / 2), this.y + (this.height / 2));
   }
 }
 
-class BadGuy extends Character {
+const ghostColors = [
+  [255, 0, 0],
+  [0, 255, 255],
+  [255, 150, 150],
+  [255, 200, 0]
+]
+class Ghost extends Character {
   fill = color(0);
   goodGuy = null;
+  isInChamber = false;
+  isLeavingChamber = false;
+  direction = 'left';
+  constructor(width, height, color){
+    super(0, 0, width, height, paths[0]);
+    this.fill = color;
+    const { x, y, path } = this.getPosition();
+    this.x = x;
+    this.y = y;
+    this.width = width * 1.2;
+    this.height = height;
+    this.currentPath = path;
+  }
+
+  getPosition() {
+    if (chamber.ghostsWithin.length == 3) {
+      // set outside of chamber
+      return {
+        x: chamber.centerOfChamberX,
+        y: chamber.touchingPath.coords[1],
+        path: chamber.touchingPath
+      };
+    }
+
+    this.isInChamber = true;
+    this.isLeavingChamber = false;
+    return chamber.addGhost(this);
+  }
+
+  beginExodus() {
+    this.isLeavingChamber = true;
+  }
+
   setGoodGuy(goodGuy){
     this.goodGuy = goodGuy;
   }
+
   followGoodGuy(){
-    const [newX, newY] = followPoint(this.x, this.y, this.goodGuy.x, this.goodGuy.y, this.velocity)
+    const [newX, newY] = followPoint(this.x, this.y, this.goodGuy.x, this.goodGuy.y, this.velocity);
 
     this.x = newX;
     this.y = newY;
   }
-  move(){
+
+  move() {
+    if (this.isInChamber) {
+      // TODO
+      return;
+    }
+    this.tryToMove(this.direction);
     // this.followGoodGuy();
   }
+
+  drawEye(x, y) {
+    const eyeWidth = this.width / 3;
+    const eyeHeight = this.width / 2.5;
+    const pupileDiameter = eyeHeight /2;
+    // draw eye whites
+    fill('white');
+    ellipse(x, y, eyeWidth, eyeHeight);
+
+    // draw pupil looking down
+    const pupilY = y + (pupileDiameter / 2);
+    fill(80, 80, 255);
+    ellipse(x, pupilY, pupileDiameter, pupileDiameter)
+  }
+  drawHead() {
+    const circleHeight = this.height / 2;
+    const circleX = this.x + (this.width / 2);
+    const circleY = this.y + circleHeight;
+    fill(this.fill);
+    ellipse(circleX, circleY, this.width, this.height);
+
+    const eye1X = circleX - this.width / 4;
+    const eye2X = circleX + this.width / 4;
+    this.drawEye(eye1X, circleY);
+    this.drawEye(eye2X, circleY);
+  }
+  drawTorso() {
+    fill(this.fill);
+    rect(this.x, this.y + (this.height/2), this.width, this.height/2);
+  }
+  drawLegs() {
+    const y = this.y + this.height;
+    const xStart = this.x;
+    const NUMBER_OF_LEGS = 3;
+    const xSpaces = NUMBER_OF_LEGS - 1; // Not entirely sure how this works but whatevs.
+    const triangleWidth = this.width / NUMBER_OF_LEGS;
+    for (let i = 0; i < 3; i ++) {
+      const x1 = xStart + (triangleWidth * i);
+      const y1 = y;
+
+      const x2 = x1 + (triangleWidth / xSpaces);
+      const y2 = y + (this.height / NUMBER_OF_LEGS);
+
+      const x3 = x2 + (triangleWidth / xSpaces);
+      const y3 = y;
+
+      fill(this.fill);
+      triangle(x1, y1, x2, y2, x3, y3);
+    }
+  }
   draw(){
-    fill(this.fill)
-    ellipse(this.x + (this.width / 2), this.y + (this.height / 2), this.width, this.height)
+    const x = this.x - (width / 2);
+    const y = this.y - (height / 2);
+    this.drawTorso();
+    this.drawHead();
+    this.drawLegs();
   }
 }
 
@@ -601,11 +773,24 @@ class Chamber {
   height = 60;
   touchingPath = null;
   centerOfChamberX = null;
+  ghostsWithin = [];
+  rateOfGhostExit = 60 * 5; // approximately 5 seconds
+  currentGhostExiting = 0;
 
   constructor() {
     this.centerOfChamberX = this.x + (this.width / 2);
 
     this.connectToNearestPath();
+  }
+
+  addGhost(ghost) {
+    this.ghostsWithin.push(ghost);
+
+    return {
+      x: this.x + ((this.width / 4) * this.ghostsWithin.length),
+      y: this.y + this.height /2,
+      path: this.touchingPath
+    }
   }
 
   drawDoor() {
@@ -620,6 +805,15 @@ class Chamber {
     noStroke();
     fill(253,190,190);
     rect(xStart, this.y-2, width, 2);
+  }
+
+  tryToBeginGhostExodus() {
+    if (frameCount === 0) {
+      return;
+    }
+    if (frameCount % rateOfGhostExit === 0) {
+      this.ghostsWithin[this.currentGhostExiting].beginExodus();
+    }
   }
 
   draw() {
@@ -659,8 +853,6 @@ class Chamber {
       throw new Error('Could not find a connecting path for chamber');
     }
 
-    console.log(path);
-
     this.touchingPath = path;
   }
 }
@@ -685,10 +877,12 @@ function setup() {
 
   pacMan = new PacManCharacter(200, 20, characterWidth, characterHeight, paths[0]);
 
-  badGuys[0] = new BadGuy(20, 200, characterWidth, characterHeight, paths[1]);
-  // badGuys[1] = new BadGuy(width, 0, width/10, height/10, paths[1]);
-  // badGuys[2] = new BadGuy(width, height, width/10, height/10, paths[1]);
-  // badGuys[3] = new BadGuy(0, height, width/10, height/10, paths[1]);
+  badGuys[0] = new Ghost(characterWidth, characterHeight, ghostColors[0]);
+
+
+  badGuys[1] = new Ghost(characterWidth, characterHeight, ghostColors[1]);
+  badGuys[2] = new Ghost(characterWidth, characterHeight, ghostColors[2]);
+  badGuys[3] = new Ghost(characterWidth, characterHeight, ghostColors[3]);
 
   badGuys.forEach((badGuy, i) => {
     badGuy.setGoodGuy(pacMan);
